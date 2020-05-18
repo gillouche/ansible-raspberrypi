@@ -1,0 +1,4 @@
+---
+# vars file for nodejs
+
+nodejs_version: setup_12.x

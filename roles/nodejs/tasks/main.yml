@@ -1,0 +1,33 @@
+---
+# tasks file for nodejs
+
+- name: Set varialbes
+  set_fact:
+    setup_path: /home/pi/Downloads/nodejs-{{ nodejs_version }}
+
+- name: Create nodejs setup directory
+  file:
+    path: "{{ setup_path }}"
+    state: directory
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: 0755
+
+- name: Download setup script
+  get_url:
+    url: https://deb.nodesource.com/{{ nodejs_version }}
+    dest: "{{ setup_path }}/setup"
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: 0755
+
+- name: Execute setup script
+  shell:
+    cmd: ./setup
+    chdir: "{{ setup_path }}"
+
+- name: Install package
+  apt:
+    name: nodejs
+    state: latest
+...

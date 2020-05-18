@@ -1,0 +1,15 @@
+---
+# playbook used to provision apps common to all my environments
+
+- hosts: all
+  become: yes
+  become_method: sudo
+  roles:
+    - check-requirements
+    - update-packages
+    - env-setup
+    - webcam
+    - java
+    - nodejs
+    - aws-greengrass-iot
+...

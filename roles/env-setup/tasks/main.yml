@@ -1,0 +1,8 @@
+---
+# tasks file for env-setup
+
+- name: Install useful apps
+  apt:
+    state: latest
+    name: ['htop', 'mlocate']
+...

@@ -1,0 +1,15 @@
+---
+# tasks file for webcam
+
+- name: Install fswebcam app
+  apt:
+    name: fswebcam
+    state: latest
+
+- name: Add user to video group
+  user:
+    name: "{{ target_user }}"
+    groups: "video"
+    append: "yes"
+    
+...
