@@ -20,12 +20,14 @@
     owner: "{{ target_user }}"
     group: "{{ target_user }}"
     mode: 0755
+  register: script_downloaded
 
 - name: Execute setup script
   shell:
     cmd: ./setup
     chdir: "{{ setup_path }}"
-
+  when: script_downloaded.changed
+  
 - name: Install package
   apt:
     name: nodejs

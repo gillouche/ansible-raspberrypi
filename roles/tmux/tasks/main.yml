@@ -1,0 +1,45 @@
+---
+# tasks file for tmux
+
+- name: Set variables
+  set_fact:
+    user_systemd_service_path: /home/{{ target_user }}/.config/systemd/user
+
+- name: Install tmux 
+  apt:
+    state: latest
+    name: tmux
+
+- name: Copy config
+  copy:
+    src: tmux.conf
+    dest: /home/pi/.tmux.conf
+
+- name: Create directory for the systemd service user
+  file:
+    path: "{{ user_systemd_service_path }}"
+    state: directory
+    recurse: yes
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: 0755
+
+- name: Create symlink tmux service to systemd user
+  copy:
+    src: tmux.service
+    dest: /home/{{ target_user }}/.config/systemd/user/tmux.service
+
+- name: Register uid of {{ target_user }}
+  command: id -u {{ target_user }}
+  register: uid
+
+- name: Start tmux service for user
+  systemd:
+    name: tmux.service
+    enabled: true 
+    scope: user
+    state: started
+  become_method: runas
+  become_user: "{{ target_user }}"
+
+...

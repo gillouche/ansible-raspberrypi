@@ -4,5 +4,12 @@
 - name: Install useful apps
   apt:
     state: latest
-    name: ['htop', 'mlocate']
+    name: ['htop', 'mlocate', 'vim', 'python3-pip', 'python3.6', 'python3-numpy', 'sudo', 'wget', 'curl', 'dpkg', 'unzip', 'tar']
+
+- name: Copy bash alias
+  copy:
+    src: bash_aliases
+    dest: /home/pi/.bash_aliases
+  become_method: runas
+  become_user: "{{ target_user }}"
 ...

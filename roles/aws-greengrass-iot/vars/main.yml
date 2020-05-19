@@ -4,5 +4,5 @@
 greengrass_dependency_checker_version: GGCv1.10.x
 nodejs_bin_version: nodejs12.x
 java_bin_version: java8
-
+dlr_url: https://neo-ai-dlr-release.s3-us-west-2.amazonaws.com/v1.1.0/pi-armv7l-raspbian4.14.71-glibc2_24-libstdcpp3_4/dlr-1.1.0-py2.py3-none-any.whl
 ...

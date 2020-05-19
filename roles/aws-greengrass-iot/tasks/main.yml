@@ -5,6 +5,8 @@
   set_fact:
     greengrass_user: ggc_user
     greengrass_group: ggc_group
+    dlr_setup_path: /home/pi/Downloads/dlr
+    greengrass_config_archive: /home/pi/Downloads/greengrass-setup.tar.gz
 
 - name: Add group ggc_group
   group: 
@@ -43,11 +45,16 @@
     reload: yes
   when: hardlink_changed.changed or symlink_changed.changed
 
+- name: Check if /boot/cmdline.txt contains cgroup enable config
+  command: awk /^.*cgroup_memory=1$/ /boot/cmdline.txt
+  register: check_cmdline_conf
+
 - name: Backup cmdline.txt
   copy:
     src: /boot/cmdline.txt
     dest: /boot/cmdline.bak
     remote_src: yes
+  when: not check_cmdline_conf.stdout
 
 - name: Enable cgroup for GreenGrass control resources
   lineinfile: 
@@ -56,6 +63,30 @@
     regexp: '^(console.*ignore-serial-consoles)$'
     line: '\1 cgroup_enable=memory cgroup_memory=1'
     backrefs: yes
+  when: not check_cmdline_conf.stdout
+
+- name: Create DLR setup directory
+  file:
+    path: "{{ dlr_setup_path }}"
+    state: directory
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: 0755
+
+- name: Download dlr pip package
+  get_url:
+    url: "{{ dlr_url }}"
+    dest: "{{ dlr_setup_path }}"
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: 0755
+  register: script_downloaded
+
+- name: Install DLR for running pytorch models
+  pip:
+    name: "{{ script_downloaded.dest }}"
+    executable: pip3
+  when: script_downloaded.changed
 
 - name: Create symlink java8
   file:
@@ -68,6 +99,50 @@
     src: /usr/bin/nodejs
     dest: /usr/bin/{{ nodejs_bin_version }}
     state: link
+
+- name: Create greengrass directory
+  file:
+    path: "/greengrass"
+    state: directory
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: 0755
+
+- name: Check if config greengrass exists
+  stat:
+    path: /greengrass/config/config.json
+  register: check_config_json
+
+- name: Check if greengrass setup present in Download folder
+  stat:
+    path: "{{ greengrass_config_archive }}"
+  register: check_greengrass_config_archive
+  when: not check_config_json.stat.exists
+
+- name: Fail if config archive does not exist
+  fail:
+    msg: "The greengrass config archive does not exist: {{ greengrass_config_archive }}"
+  when: (not check_config_json.stat.exists) and (not check_greengrass_config_archive.stat.exists)
+
+- name: Extract config if necessary
+  unarchive:
+    src: "{{ greengrass_config_archive }}"
+    dest: /greengrass
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    remote_src: yes
+  when: not check_config_json.stat.exists
+
+- name: Check if Amazon root CA pem is in config
+  stat:
+    path: "/greengrass/certs/root.ca.pem"
+  register: check_amazon_root_perm
+
+- name: Download the root CA pem amazon if needed
+  get_url:
+    url: https://www.amazontrust.com/repository/AmazonRootCA1.pem
+    dest: /greengrass/certs/root.ca.pem
+  when: not check_amazon_root_perm.stat.exists
 
 - name: Create dependency checker directory
   file:
@@ -108,4 +183,25 @@
   fail:
     msg: "A dependency is missing, check /home/pi/Downloads/{{ greengrass_dependency_checker_version }}/greengrass-dependency-checker-{{ greengrass_dependency_checker_version }}/result.txt for more infos."
   when: "'Not found'in check_ggc_dependencies_output.stdout or 'Disabled' in check_ggc_dependencies_output.stdout"
+
+- name: Install greengrass keyring
+  apt:
+    deb: https://d1onfpft10uf5o.cloudfront.net/greengrass-apt/downloads/aws-iot-greengrass-keyring.deb
+
+- name: Add greengrass apt list
+  copy:
+    src: greengrass.list
+    dest: /etc/apt/sources.list.d/greengrass.list
+
+- name: Install greengrass package
+  apt:
+    name: aws-iot-greengrass-core
+    update_cache: yes 
+    state: latest
+
+- name: Enable greengrass service
+  systemd:
+    name: greengrass
+    enabled: yes
+    state: started
 ...
